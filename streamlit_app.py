@@ -9,8 +9,9 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 from PIL import Image
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
+from keras.models import load_model
+from keras.utils import img_to_array
+import traceback
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -284,7 +285,17 @@ if uploaded_model is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp:
             tmp.write(uploaded_model.read())
             tmp_path = tmp.name
-        st.session_state.model = load_model(tmp_path, compile=False)
+        try:
+            st.session_state.model = load_model(
+                tmp_path,
+                compile=False,
+                safe_mode=False
+            )
+        except:
+            st.session_state.model = load_model(
+                tmp_path,
+                compile=False
+            )
         os.unlink(tmp_path)
 
         try:
@@ -303,7 +314,9 @@ if uploaded_model is not None:
 
         st.sidebar.success("Model loaded ✅")
     except Exception as e:
-        st.sidebar.error(f"Gagal memuat model: {e}")
+        st.sidebar.error("Gagal memuat model")
+        st.code(str(e))
+        st.code(traceback.format_exc())
 
 model  = st.session_state.model
 labels = st.session_state.labels
@@ -448,6 +461,7 @@ if menu == "🔍 Inspeksi":
 
             with st.spinner("🔬 Menganalisis..."):
                 img_arr    = img_to_array(image.resize((150, 150)))
+                img_arr    = img_arr.astype("float32")
                 img_arr    = np.expand_dims(img_arr, axis=0)
                 output     = model.predict(img_arr, verbose=0)[0]
                 thresh_val = threshold / 100.0
